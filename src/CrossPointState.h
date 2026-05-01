@@ -44,7 +44,7 @@ class CrossPointState {
   char pendingAlertBody[256] = {};
 
  private:
-  bool loadFromBinaryFile();
+  bool loadFromBinaryFile(const char* stateBin);
 };
 
 // Helper macro to access settings

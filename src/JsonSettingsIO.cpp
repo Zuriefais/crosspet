@@ -19,6 +19,7 @@
 #include "RecentBooksStore.h"
 #include "SettingsList.h"
 #include "WifiCredentialStore.h"
+#include "ProfileStore.h"
 
 // Convert legacy settings.
 void applyLegacyStatusBarSettings(CrossPointSettings& settings) {
@@ -512,5 +513,52 @@ bool JsonSettingsIO::loadOpds(OpdsServerStore& store, const char* json, bool* ne
   }
 
   LOG_DBG("OPS", "Loaded %zu OPDS servers from file", store.servers.size());
+  return true;
+}
+
+// ---- ProfileStore ----
+
+bool JsonSettingsIO::saveProfiles(const ProfileStore& store, const char* path) {
+  JsonDocument doc;
+  doc["activeProfileId"] = store.getActiveProfileId();
+
+  JsonArray arr = doc["profiles"].to<JsonArray>();
+  for (const auto& prof : store.getProfiles()) {
+    JsonObject obj = arr.add<JsonObject>();
+    obj["id"] = prof.id;
+    obj["name"] = prof.name;
+  }
+
+  String json;
+  serializeJson(doc, json);
+  return Storage.writeFile(path, json);
+}
+
+bool JsonSettingsIO::loadProfiles(ProfileStore& store, const char* json) {
+  JsonDocument doc;
+  auto error = deserializeJson(doc, json);
+  if (error) {
+    LOG_ERR("PROF", "JSON parse error: %s", error.c_str());
+    return false;
+  }
+
+  store.profiles.clear();
+  JsonArray arr = doc["profiles"].as<JsonArray>();
+  for (JsonObject obj : arr) {
+    if (store.profiles.size() >= 8) break;
+    Profile prof;
+    prof.id = obj["id"] | std::string("");
+    prof.name = obj["name"] | std::string("");
+    if (!prof.id.empty()) {
+      store.profiles.push_back(std::move(prof));
+    }
+  }
+
+  store.activeProfileId = doc["activeProfileId"] | std::string("");
+  if (store.profiles.empty() || store.getActiveProfile() == nullptr) {
+    store.activeProfileId = store.profiles.empty() ? "" : store.profiles[0].id;
+  }
+
+  LOG_DBG("PROF", "Loaded %zu profiles", store.profiles.size());
   return true;
 }

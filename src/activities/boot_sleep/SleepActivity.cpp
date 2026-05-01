@@ -19,6 +19,7 @@
 #include "AppVersion.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "ProfileStore.h"
 #include "RecentBooksStore.h"
 #include "SleepCoverAssets.h"
 #include "activities/reader/ReaderUtils.h"
@@ -227,7 +228,9 @@ RecentBook recentBookForPath(const std::string& path) {
   return loadedBook;
 }
 
-std::string epubCachePathFor(const std::string& path) { return Epub::cachePathForFilePath(path, "/.crosspoint"); }
+std::string epubCachePathFor(const std::string& path) {
+  return Epub::cachePathForFilePath(path, PROFILE_STORE.getProfileCacheBase());
+}
 
 BookReadingStats loadBookStatsForPath(const std::string& path) {
   if (!FsHelpers::hasEpubExtension(path)) {

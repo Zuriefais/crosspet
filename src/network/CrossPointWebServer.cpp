@@ -19,6 +19,7 @@
 #include "CrossPointSettings.h"
 #include "FontInstaller.h"
 #include "OpdsServerStore.h"
+#include "ProfileStore.h"
 #include "SdCardFontSystem.h"
 #include "SettingsList.h"
 #include "WebDAVHandler.h"
@@ -212,6 +213,11 @@ void CrossPointWebServer::begin() {
   server->on("/api/opds", HTTP_GET, [this] { handleGetOpdsServers(); });
   server->on("/api/opds", HTTP_POST, [this] { handlePostOpdsServer(); });
   server->on("/api/opds/delete", HTTP_POST, [this] { handleDeleteOpdsServer(); });
+
+  // Profile endpoints
+  server->on("/api/profiles", HTTP_GET, [this] { handleGetProfiles(); });
+  server->on("/api/profiles", HTTP_POST, [this] { handlePostProfile(); });
+  server->on("/api/profiles/delete", HTTP_POST, [this] { handleDeleteProfile(); });
 
   // Wi-Fi credential endpoints
   server->on("/api/wifi", HTTP_GET, [this] { handleGetWifiNetworks(); });
@@ -1398,6 +1404,107 @@ void CrossPointWebServer::handleDeleteOpdsServer() {
 
   OPDS_STORE.removeServer(static_cast<size_t>(idx));
   LOG_DBG("WEB", "Deleted OPDS server at index %d", idx);
+  server->send(200, "text/plain", "OK");
+}
+
+// ---- Profile API ----
+
+void CrossPointWebServer::handleGetProfiles() const {
+  const auto& profiles = PROFILE_STORE.getProfiles();
+
+  server->setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server->send(200, "application/json", "");
+  server->sendContent("{\"active\":\"");
+  server->sendContent(PROFILE_STORE.getActiveProfileId().c_str());
+  server->sendContent("\",\"profiles\":[");
+
+  char output[192];
+  JsonDocument doc;
+  for (size_t i = 0; i < profiles.size(); i++) {
+    doc.clear();
+    doc["id"] = profiles[i].id;
+    doc["name"] = profiles[i].name;
+    doc["active"] = profiles[i].id == PROFILE_STORE.getActiveProfileId();
+
+    const size_t written = serializeJson(doc, output, sizeof(output));
+    if (written >= sizeof(output)) continue;
+
+    if (i > 0) server->sendContent(",");
+    server->sendContent(output);
+  }
+
+  server->sendContent("]}");
+  server->sendContent("");
+  LOG_DBG("WEB", "Served profiles API (%zu profiles)", profiles.size());
+}
+
+void CrossPointWebServer::handlePostProfile() {
+  if (!server->hasArg("plain")) {
+    server->send(400, "text/plain", "Missing JSON body");
+    return;
+  }
+
+  JsonDocument doc;
+  const DeserializationError err = deserializeJson(doc, server->arg("plain"));
+  if (err) {
+    server->send(400, "text/plain", String("Invalid JSON: ") + err.c_str());
+    return;
+  }
+
+  const std::string id = doc["id"] | std::string("");
+  const std::string name = doc["name"] | std::string("");
+
+  if (!id.empty() && name.empty()) {
+    if (!PROFILE_STORE.setActiveProfile(id)) {
+      server->send(400, "text/plain", "Profile not found");
+      return;
+    }
+    server->send(200, "text/plain", "OK");
+    return;
+  }
+
+  if (!id.empty()) {
+    if (!PROFILE_STORE.renameProfile(id, name)) {
+      server->send(400, "text/plain", "Cannot rename profile");
+      return;
+    }
+    server->send(200, "text/plain", "OK");
+    return;
+  }
+
+  if (name.empty()) {
+    server->send(400, "text/plain", "Missing profile name");
+    return;
+  }
+  if (!PROFILE_STORE.addProfile(name)) {
+    server->send(400, "text/plain", "Cannot add profile");
+    return;
+  }
+  server->send(200, "text/plain", "OK");
+}
+
+void CrossPointWebServer::handleDeleteProfile() {
+  if (!server->hasArg("plain")) {
+    server->send(400, "text/plain", "Missing JSON body");
+    return;
+  }
+
+  JsonDocument doc;
+  const DeserializationError err = deserializeJson(doc, server->arg("plain"));
+  if (err) {
+    server->send(400, "text/plain", String("Invalid JSON: ") + err.c_str());
+    return;
+  }
+
+  const std::string id = doc["id"] | std::string("");
+  if (id.empty()) {
+    server->send(400, "text/plain", "Missing profile id");
+    return;
+  }
+  if (!PROFILE_STORE.removeProfile(id)) {
+    server->send(400, "text/plain", "Cannot delete profile");
+    return;
+  }
   server->send(200, "text/plain", "OK");
 }
 

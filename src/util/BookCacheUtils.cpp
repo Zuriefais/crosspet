@@ -9,6 +9,8 @@
 #include <cstring>
 #include <iterator>
 
+#include "ProfileStore.h"
+
 namespace {
 
 struct PreservedCacheFile {
@@ -29,13 +31,13 @@ constexpr PreservedCacheFile PAGE_PROGRESS_FILES[] = {
 
 std::string getBookCachePath(const std::string& path) {
   if (FsHelpers::hasEpubExtension(path)) {
-    return Epub(path, "/.crosspoint").getCachePath();
+    return Epub(path, PROFILE_STORE.getProfileCacheBase()).getCachePath();
   }
   if (FsHelpers::hasXtcExtension(path)) {
-    return Xtc(path, "/.crosspoint").getCachePath();
+    return Xtc(path, PROFILE_STORE.getProfileCacheBase()).getCachePath();
   }
   if (FsHelpers::hasTxtExtension(path)) {
-    return Txt(path, "/.crosspoint").getCachePath();
+    return Txt(path, PROFILE_STORE.getProfileCacheBase()).getCachePath();
   }
   return "";
 }
@@ -125,11 +127,11 @@ bool isBookCacheDirectoryName(const char* name) {
 
 void clearBookCache(const std::string& path) {
   if (FsHelpers::hasEpubExtension(path)) {
-    Epub(path, "/.crosspoint").clearCache();
+    Epub(path, PROFILE_STORE.getProfileCacheBase()).clearCache();
   } else if (FsHelpers::hasXtcExtension(path)) {
-    Xtc(path, "/.crosspoint").clearCache();
+    Xtc(path, PROFILE_STORE.getProfileCacheBase()).clearCache();
   } else if (FsHelpers::hasTxtExtension(path)) {
-    Txt(path, "/.crosspoint").clearCache();
+    Txt(path, PROFILE_STORE.getProfileCacheBase()).clearCache();
   } else {
     return;
   }

@@ -8,15 +8,28 @@
 #include <Serialization.h>
 #include <Xtc.h>
 
+#include "ProfileStore.h"
+
 #include <algorithm>
 #include <iterator>
 
 namespace {
 constexpr uint8_t RECENT_BOOKS_FILE_VERSION = 3;
-constexpr char RECENT_BOOKS_FILE_BIN[] = "/.crosspoint/recent.bin";
-constexpr char RECENT_BOOKS_FILE_JSON[] = "/.crosspoint/recent.json";
-constexpr char RECENT_BOOKS_FILE_BAK[] = "/.crosspoint/recent.bin.bak";
 constexpr int MAX_RECENT_BOOKS = 18;
+
+std::string getRecentBooksJsonPath() {
+  return PROFILE_STORE.getProfileRecentBooksPath();
+}
+
+std::string getRecentBooksBinPath() {
+  std::string jsonPath = getRecentBooksJsonPath();
+  const size_t dotPos = jsonPath.rfind('.');
+  return (dotPos != std::string::npos ? jsonPath.substr(0, dotPos) : jsonPath) + ".bin";
+}
+
+std::string getRecentBooksBakPath() {
+  return getRecentBooksBinPath() + ".bak";
+}
 }  // namespace
 
 RecentBooksStore RecentBooksStore::instance;
@@ -103,8 +116,12 @@ bool RecentBooksStore::pruneMissing() {
 }
 
 bool RecentBooksStore::saveToFile() const {
-  Storage.mkdir("/.crosspoint");
-  return JsonSettingsIO::saveRecentBooks(*this, RECENT_BOOKS_FILE_JSON);
+  const std::string jsonPath = getRecentBooksJsonPath();
+  const size_t slash = jsonPath.rfind('/');
+  if (slash != std::string::npos) {
+    Storage.mkdir(jsonPath.substr(0, slash).c_str());
+  }
+  return JsonSettingsIO::saveRecentBooks(*this, jsonPath.c_str());
 }
 
 RecentBook RecentBooksStore::getDataFromBook(std::string path) const {
@@ -120,12 +137,12 @@ RecentBook RecentBooksStore::getDataFromBook(std::string path) const {
   // Use buildIfMissing=false to avoid heavy epub loading on boot; getTitle()/getAuthor() may be
   // blank until the book is opened, and entries with missing title are omitted from recent list.
   if (FsHelpers::hasEpubExtension(lastBookFileName)) {
-    Epub epub(path, "/.crosspoint");
+    Epub epub(path, PROFILE_STORE.getProfileCacheBase());
     epub.load(false, true);
     return RecentBook{path, epub.getTitle(), epub.getAuthor(), epub.getThumbBmpPath()};
   } else if (FsHelpers::hasXtcExtension(lastBookFileName)) {
     // Handle XTC file
-    Xtc xtc(path, "/.crosspoint");
+    Xtc xtc(path, PROFILE_STORE.getProfileCacheBase());
     if (xtc.load()) {
       return RecentBook{path, xtc.getTitle(), xtc.getAuthor(), xtc.getThumbBmpPath()};
     }
@@ -136,19 +153,23 @@ RecentBook RecentBooksStore::getDataFromBook(std::string path) const {
 }
 
 bool RecentBooksStore::loadFromFile() {
+  const std::string jsonPath = getRecentBooksJsonPath();
+  const std::string binPath = getRecentBooksBinPath();
+  const std::string bakPath = getRecentBooksBakPath();
+
   // Try JSON first
-  if (Storage.exists(RECENT_BOOKS_FILE_JSON)) {
-    String json = Storage.readFile(RECENT_BOOKS_FILE_JSON);
+  if (Storage.exists(jsonPath.c_str())) {
+    String json = Storage.readFile(jsonPath.c_str());
     if (!json.isEmpty()) {
       return JsonSettingsIO::loadRecentBooks(*this, json.c_str());
     }
   }
 
   // Fall back to binary migration
-  if (Storage.exists(RECENT_BOOKS_FILE_BIN)) {
+  if (Storage.exists(binPath.c_str())) {
     if (loadFromBinaryFile()) {
       saveToFile();
-      Storage.rename(RECENT_BOOKS_FILE_BIN, RECENT_BOOKS_FILE_BAK);
+      Storage.rename(binPath.c_str(), bakPath.c_str());
       LOG_DBG("RBS", "Migrated recent.bin to recent.json");
       return true;
     }
@@ -159,7 +180,8 @@ bool RecentBooksStore::loadFromFile() {
 
 bool RecentBooksStore::loadFromBinaryFile() {
   HalFile inputFile;
-  if (!Storage.openFileForRead("RBS", RECENT_BOOKS_FILE_BIN, inputFile)) {
+  const std::string binPath = getRecentBooksBinPath();
+  if (!Storage.openFileForRead("RBS", binPath.c_str(), inputFile)) {
     return false;
   }
 

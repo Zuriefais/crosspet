@@ -6,6 +6,7 @@
 #include <Logging.h>
 
 #include "MappedInputManager.h"
+#include "ProfileStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/BookCacheUtils.h"
@@ -76,43 +77,46 @@ void ClearCacheActivity::render(RenderLock&&) {
 void ClearCacheActivity::clearCache() {
   LOG_DBG("CLEAR_CACHE", "Clearing cache...");
 
-  // Open .crosspoint directory
-  auto root = Storage.open("/.crosspoint");
-  if (!root || !root.isDirectory()) {
-    LOG_DBG("CLEAR_CACHE", "Failed to open cache directory");
-    if (root) root.close();
-    state = FAILED;
-    requestUpdate();
-    return;
-  }
-
   clearedCount = 0;
   failedCount = 0;
-  char name[128];
 
-  // Iterate through all entries in the directory
-  for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
-    file.getName(name, sizeof(name));
-    String itemName(name);
+  auto clearCacheDir = [this](const std::string& basePath) {
+    auto root = Storage.open(basePath.c_str());
+    if (!root || !root.isDirectory()) {
+      if (root) root.close();
+      return;
+    }
 
-    // Only delete directories matching known book cache names.
-    if (file.isDirectory() && isBookCacheDirectoryName(itemName.c_str())) {
-      String fullPath = "/.crosspoint/" + itemName;
-      LOG_DBG("CLEAR_CACHE", "Removing cache: %s", fullPath.c_str());
+    char name[128];
+    for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
+      file.getName(name, sizeof(name));
+      String itemName(name);
 
-      file.close();  // Close before attempting to delete
+      if (file.isDirectory() && isBookCacheDirectoryName(itemName.c_str())) {
+        const std::string fullPath = basePath + "/" + itemName.c_str();
+        LOG_DBG("CLEAR_CACHE", "Removing cache: %s", fullPath.c_str());
+        file.close();
 
-      if (Storage.removeDir(fullPath.c_str())) {
-        clearedCount++;
+        if (Storage.removeDir(fullPath.c_str())) {
+          clearedCount++;
+        } else {
+          LOG_ERR("CLEAR_CACHE", "Failed to remove: %s", fullPath.c_str());
+          failedCount++;
+        }
       } else {
-        LOG_ERR("CLEAR_CACHE", "Failed to remove: %s", fullPath.c_str());
-        failedCount++;
+        file.close();
       }
-    } else {
-      file.close();
+    }
+    root.close();
+  };
+
+  clearCacheDir("/.crosspoint");
+  const auto& profiles = PROFILE_STORE.getProfiles();
+  for (const auto& profile : profiles) {
+    if (profile.id != "default") {
+      clearCacheDir("/.crosspoint/profiles/" + profile.id);
     }
   }
-  root.close();
 
   LOG_DBG("CLEAR_CACHE", "Cache cleared: %d removed, %d failed", clearedCount, failedCount);
 

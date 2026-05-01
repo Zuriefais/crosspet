@@ -8,6 +8,8 @@
 #include <limits>
 #include <string>
 
+#include "ProfileStore.h"
+
 namespace {
 // Binary layout v1 (13 bytes):
 //   [0]     version (= 1)
@@ -25,8 +27,6 @@ static constexpr uint8_t GLOBAL_STATS_VERSION = 2;
 static constexpr uint8_t GLOBAL_STATS_VERSION_V1 = 1;
 static constexpr int GLOBAL_STATS_FILE_SIZE_V1 = 13;
 static constexpr int GLOBAL_STATS_FILE_SIZE = 17;
-static constexpr char GLOBAL_STATS_PATH[] = "/.crosspoint/global_stats.bin";
-static constexpr char GLOBAL_STATS_BAK_PATH[] = "/.crosspoint/global_stats.bin.bak";
 static constexpr char SYNCED_STATS_DIR[] = "/.crosspoint/synced_stats";
 
 uint32_t readLe32(const uint8_t* data, const int offset) {
@@ -148,8 +148,10 @@ static bool loadFromFile(const char* path, GlobalReadingStats& out) {
 
 GlobalReadingStats GlobalReadingStats::load() {
   GlobalReadingStats stats;
-  if (loadFromFile(GLOBAL_STATS_PATH, stats)) return stats;
-  if (loadFromFile(GLOBAL_STATS_BAK_PATH, stats)) {
+  const std::string path = PROFILE_STORE.getProfileGlobalStatsPath();
+  const std::string bakPath = PROFILE_STORE.getProfileGlobalStatsBakPath();
+  if (loadFromFile(path.c_str(), stats)) return stats;
+  if (loadFromFile(bakPath.c_str(), stats)) {
     LOG_DBG("GSTATS", "Recovered global stats from backup");
     return stats;
   }
@@ -214,5 +216,11 @@ void GlobalReadingStats::save() const {
   // Preserve previous file as .bak before truncating — openFileForWrite uses
   // O_TRUNC, so a power failure mid-write would corrupt the primary file
   // without this fallback.
-  saveToFile(*this, GLOBAL_STATS_PATH, GLOBAL_STATS_BAK_PATH);
+  const std::string path = PROFILE_STORE.getProfileGlobalStatsPath();
+  const std::string bakPath = PROFILE_STORE.getProfileGlobalStatsBakPath();
+  const size_t slash = path.rfind('/');
+  if (slash != std::string::npos) {
+    Storage.mkdir(path.substr(0, slash).c_str());
+  }
+  saveToFile(*this, path.c_str(), bakPath.c_str());
 }

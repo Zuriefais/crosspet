@@ -26,6 +26,7 @@ enum class SettingAction {
   ControlsSideButtons,
   SystemDevice,
   SystemFilesCache,
+  Profiles,
   Network,
   ClearCache,
   CheckForUpdates,

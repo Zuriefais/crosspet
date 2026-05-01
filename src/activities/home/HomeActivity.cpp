@@ -26,8 +26,10 @@
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
+#include "ProfileStore.h"
 #include "RecentBookProgress.h"
 #include "RecentBooksStore.h"
+#include "../settings/ProfileSelectActivity.h"
 #include "components/UITheme.h"
 #include "components/themes/lyra/LyraCarouselTheme.h"
 #include "components/themes/minimal/MinimalTheme.h"
@@ -46,6 +48,7 @@ enum class HomeMenuAction {
   OpdsBrowser,
   ReadingStats,
   Bookmarks,
+  Profiles,
   FileTransfer,
   Settings,
 };
@@ -118,13 +121,13 @@ void appendHashedFileStateToKey(std::string& key, const std::string& path) {
 
 std::string getRecentBookCachePath(const RecentBook& book) {
   if (FsHelpers::hasEpubExtension(book.path)) {
-    return Epub::cachePathForFilePath(book.path, "/.crosspoint");
+    return Epub::cachePathForFilePath(book.path, PROFILE_STORE.getProfileCacheBase());
   }
   if (FsHelpers::hasXtcExtension(book.path)) {
-    return "/.crosspoint/xtc_" + std::to_string(std::hash<std::string>{}(book.path));
+    return PROFILE_STORE.getProfileCacheBase() + "/xtc_" + std::to_string(std::hash<std::string>{}(book.path));
   }
   if (FsHelpers::hasTxtExtension(book.path) || FsHelpers::hasMarkdownExtension(book.path)) {
-    return "/.crosspoint/txt_" + std::to_string(std::hash<std::string>{}(book.path));
+    return PROFILE_STORE.getProfileCacheBase() + "/txt_" + std::to_string(std::hash<std::string>{}(book.path));
   }
   return "";
 }
@@ -150,10 +153,10 @@ bool hasThumbnailPlaceholder(const std::string& coverBmpPath) {
 
 std::string getReusableCoverPath(const RecentBook& book) {
   if (FsHelpers::hasEpubExtension(book.path)) {
-    return Epub(book.path, "/.crosspoint").getThumbBmpPath();
+    return Epub(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   if (FsHelpers::hasXtcExtension(book.path)) {
-    return Xtc(book.path, "/.crosspoint").getThumbBmpPath();
+    return Xtc(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   return book.coverBmpPath;
 }
@@ -189,6 +192,7 @@ std::vector<HomeMenuEntry> buildHomeMenuItems(bool hasOpdsServers, bool hasReadi
     items.push_back({tr(STR_BOOKMARKS), BookmarkIcon, HomeMenuAction::Bookmarks});
   }
 
+  items.push_back({tr(STR_PROFILES), Settings, HomeMenuAction::Profiles});
   items.push_back({tr(STR_FILE_TRANSFER), Transfer, HomeMenuAction::FileTransfer});
   items.push_back({tr(STR_SETTINGS_TITLE), Settings, HomeMenuAction::Settings});
   return items;
@@ -209,6 +213,7 @@ std::vector<HomeMenuEntry> buildMinimalMenuItems(bool hasOpdsServers, bool hasRe
     items.push_back({tr(STR_READING_STATS), Chart, HomeMenuAction::ReadingStats});
   }
 
+  items.push_back({tr(STR_PROFILES), Settings, HomeMenuAction::Profiles});
   items.push_back({tr(STR_FILE_TRANSFER), Transfer, HomeMenuAction::FileTransfer});
   return items;
 }
@@ -276,7 +281,7 @@ std::string minimalHomeCoverPath(const RecentBook& book, int coverHeight) {
     return {};
   }
   if (FsHelpers::hasEpubExtension(book.path)) {
-    return Epub(book.path, "/.crosspoint")
+    return Epub(book.path, PROFILE_STORE.getProfileCacheBase())
         .getAdaptiveThumbBmpPath(minimalHomeCoverWidth(coverHeight), minimalHomeCoverHeight(coverHeight));
   }
   return UITheme::getCoverThumbPath(book.coverBmpPath, minimalHomeCoverWidth(coverHeight),
@@ -447,7 +452,7 @@ static_assert(HomeActivity::kMaxCachedBooks >= LyraCarouselMetrics::values.homeR
 
 int HomeActivity::getMenuItemCount() const {
   const auto& metrics = UITheme::getInstance().getMetrics();
-  int count = 4;  // File Browser, Recents, File transfer, Settings
+  int count = 5;  // File Browser, Recents, Profiles, File transfer, Settings
   if (!metrics.homeContinueReadingInMenu && !recentBooks.empty()) {
     count += recentBooks.size();
   } else if (metrics.homeContinueReadingInMenu && !recentBooks.empty()) {
@@ -530,7 +535,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
 
         if (centerMissing || sideMissing) {
           if (FsHelpers::hasEpubExtension(book.path)) {
-            Epub epub(book.path, "/.crosspoint");
+            Epub epub(book.path, PROFILE_STORE.getProfileCacheBase());
             if (!showingLoading) {
               showingLoading = true;
               popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
@@ -561,7 +566,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
             coverRendered = false;
             requestUpdate();
           } else if (FsHelpers::hasXtcExtension(book.path)) {
-            Xtc xtc(book.path, "/.crosspoint");
+            Xtc xtc(book.path, PROFILE_STORE.getProfileCacheBase());
             if (xtc.load()) {
               if (!showingLoading) {
                 showingLoading = true;
@@ -594,7 +599,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
                                                       : UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
         if (coverPath.empty() || !Storage.exists(coverPath.c_str())) {
           if (FsHelpers::hasEpubExtension(book.path)) {
-            Epub epub(book.path, "/.crosspoint");
+            Epub epub(book.path, PROFILE_STORE.getProfileCacheBase());
             if (!showingLoading) {
               showingLoading = true;
               popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
@@ -621,7 +626,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
             coverRendered = false;
             requestUpdate();
           } else if (FsHelpers::hasXtcExtension(book.path)) {
-            Xtc xtc(book.path, "/.crosspoint");
+            Xtc xtc(book.path, PROFILE_STORE.getProfileCacheBase());
             if (xtc.load()) {
               if (!showingLoading) {
                 showingLoading = true;
@@ -1235,6 +1240,9 @@ void HomeActivity::loop() {
           case HomeMenuAction::Bookmarks:
             onBookmarksOpen();
             break;
+          case HomeMenuAction::Profiles:
+            onProfileSelectOpen();
+            break;
           case HomeMenuAction::FileTransfer:
             onFileTransferOpen();
             break;
@@ -1404,6 +1412,9 @@ void HomeActivity::loop() {
         break;
       case HomeMenuAction::Bookmarks:
         onBookmarksOpen();
+        break;
+      case HomeMenuAction::Profiles:
+        onProfileSelectOpen();
         break;
       case HomeMenuAction::FileTransfer:
         onFileTransferOpen();
@@ -1622,6 +1633,20 @@ void HomeActivity::onRecentsOpen() { activityManager.goToRecentBooks(); }
 void HomeActivity::onSettingsOpen() { activityManager.goToSettings(); }
 
 void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
+
+void HomeActivity::onProfileSelectOpen() {
+  startActivityForResult(std::make_unique<ProfileSelectActivity>(renderer, mappedInput),
+                         [this](const ActivityResult&) {
+                           RECENT_BOOKS.loadFromFile();
+                           loadRecentBooks(UITheme::getInstance().getMetrics().homeRecentBooksCount);
+                           globalStats = GlobalReadingStats::load();
+                           showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
+                           allDevicesGlobalStats =
+                               showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
+                           updateHighlightedBookContext();
+                           requestUpdate();
+                         });
+}
 
 void HomeActivity::onOpdsBrowserOpen() { activityManager.goToBrowser(); }
 

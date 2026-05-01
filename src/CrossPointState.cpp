@@ -5,13 +5,27 @@
 #include <Logging.h>
 #include <Serialization.h>
 
+#include "ProfileStore.h"
+
 #include <algorithm>
+#include <cstring>
 
 namespace {
 constexpr uint8_t STATE_FILE_VERSION = 5;
-constexpr char STATE_FILE_BIN[] = "/.crosspoint/state.bin";
-constexpr char STATE_FILE_JSON[] = "/.crosspoint/state.json";
-constexpr char STATE_FILE_BAK[] = "/.crosspoint/state.bin.bak";
+
+std::string getStateJsonPath() {
+  return PROFILE_STORE.getProfileStatePath();
+}
+
+std::string getStateBinPath() {
+  std::string jsonPath = getStateJsonPath();
+  const size_t dotPos = jsonPath.rfind('.');
+  return (dotPos != std::string::npos ? jsonPath.substr(0, dotPos) : jsonPath) + ".bin";
+}
+
+std::string getStateBakPath() {
+  return getStateBinPath() + ".bak";
+}
 }  // namespace
 
 CrossPointState CrossPointState::instance;
@@ -32,24 +46,32 @@ void CrossPointState::pushRecentSleep(uint16_t idx) {
 }
 
 bool CrossPointState::saveToFile() const {
-  Storage.mkdir("/.crosspoint");
-  return JsonSettingsIO::saveState(*this, STATE_FILE_JSON);
+  const std::string jsonPath = getStateJsonPath();
+  const size_t slash = jsonPath.rfind('/');
+  if (slash != std::string::npos) {
+    Storage.mkdir(jsonPath.substr(0, slash).c_str());
+  }
+  return JsonSettingsIO::saveState(*this, jsonPath.c_str());
 }
 
 bool CrossPointState::loadFromFile() {
+  const std::string jsonPath = getStateJsonPath();
+  const std::string binPath = getStateBinPath();
+  const std::string bakPath = getStateBakPath();
+
   // Try JSON first
-  if (Storage.exists(STATE_FILE_JSON)) {
-    String json = Storage.readFile(STATE_FILE_JSON);
+  if (Storage.exists(jsonPath.c_str())) {
+    String json = Storage.readFile(jsonPath.c_str());
     if (!json.isEmpty()) {
       return JsonSettingsIO::loadState(*this, json.c_str());
     }
   }
 
   // Fall back to binary migration
-  if (Storage.exists(STATE_FILE_BIN)) {
-    if (loadFromBinaryFile()) {
+  if (Storage.exists(binPath.c_str())) {
+    if (loadFromBinaryFile(binPath.c_str())) {
       if (saveToFile()) {
-        Storage.rename(STATE_FILE_BIN, STATE_FILE_BAK);
+        Storage.rename(binPath.c_str(), bakPath.c_str());
         LOG_DBG("CPS", "Migrated state.bin to state.json");
         return true;
       } else {
@@ -62,9 +84,9 @@ bool CrossPointState::loadFromFile() {
   return false;
 }
 
-bool CrossPointState::loadFromBinaryFile() {
+bool CrossPointState::loadFromBinaryFile(const char* stateBin) {
   HalFile inputFile;
-  if (!Storage.openFileForRead("CPS", STATE_FILE_BIN, inputFile)) {
+  if (!Storage.openFileForRead("CPS", stateBin, inputFile)) {
     return false;
   }
 

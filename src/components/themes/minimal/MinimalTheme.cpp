@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "RecentBooksStore.h"
+#include "ProfileStore.h"
 #include "activities/reader/BookReadingStats.h"
 #include "components/UITheme.h"
 #include "components/icons/cover.h"
@@ -91,7 +92,7 @@ std::string coverPathForImageRect(const RecentBook& book, const Rect& imageRect)
   }
 
   if (FsHelpers::hasEpubExtension(book.path)) {
-    return Epub(book.path, "/.crosspoint").getAdaptiveThumbBmpPath(imageRect.width, imageRect.height);
+    return Epub(book.path, PROFILE_STORE.getProfileCacheBase()).getAdaptiveThumbBmpPath(imageRect.width, imageRect.height);
   }
 
   std::string coverBmpPath = UITheme::getCoverThumbPath(book.coverBmpPath, imageRect.width, imageRect.height);

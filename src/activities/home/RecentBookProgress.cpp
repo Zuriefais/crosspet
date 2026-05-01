@@ -13,6 +13,7 @@
 #include <string>
 
 #include "RecentBooksStore.h"
+#include "ProfileStore.h"
 #include "activities/reader/EpubReaderUtils.h"
 
 namespace {
@@ -22,7 +23,7 @@ constexpr uint8_t TXT_CACHE_VERSION = 3;
 float clampProgressPercent(const float progress) { return std::clamp(progress, 0.0f, 100.0f); }
 
 float loadEpubProgressPercent(const RecentBook& book) {
-  Epub epub(book.path, "/.crosspoint");
+  Epub epub(book.path, PROFILE_STORE.getProfileCacheBase());
   if (!epub.load(false, true)) {
     return -1.0f;
   }
@@ -41,7 +42,7 @@ float loadEpubProgressPercent(const RecentBook& book) {
 }
 
 float loadXtcProgressPercent(const RecentBook& book) {
-  Xtc xtc(book.path, "/.crosspoint");
+  Xtc xtc(book.path, PROFILE_STORE.getProfileCacheBase());
   if (!xtc.load()) {
     return -1.0f;
   }
@@ -64,7 +65,7 @@ float loadXtcProgressPercent(const RecentBook& book) {
 }
 
 float loadTxtProgressPercent(const RecentBook& book) {
-  Txt txt(book.path, "/.crosspoint");
+  Txt txt(book.path, PROFILE_STORE.getProfileCacheBase());
   if (!txt.load()) {
     return -1.0f;
   }

@@ -31,6 +31,7 @@
 #include "KOReaderCredentialStore.h"
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
+#include "ProfileStore.h"
 #include "ProgressMapper.h"
 #include "QrDisplayActivity.h"
 #include "ReaderUtils.h"
@@ -334,7 +335,7 @@ void moveFinishedBookToReadFolder(const std::string& srcPath, const std::string&
   }
 
   // Cache dir is keyed by hash of the epub path (see Epub ctor), so it must be re-keyed.
-  const std::string newCachePath = Epub::cachePathForFilePath(dstPath, "/.crosspoint");
+  const std::string newCachePath = Epub::cachePathForFilePath(dstPath, PROFILE_STORE.getProfileCacheBase());
   if (!oldCachePath.empty() && Storage.exists(oldCachePath.c_str())) {
     if (!Storage.rename(oldCachePath.c_str(), newCachePath.c_str())) {
       LOG_ERR("ERS", "Failed to rename cache dir %s -> %s (non-fatal)", oldCachePath.c_str(), newCachePath.c_str());
@@ -2519,7 +2520,7 @@ void EpubReaderActivity::restoreSavedPosition() {
   requestUpdate();
 }
 bool EpubReaderActivity::drawCurrentPageToBuffer(const std::string& filePath, GfxRenderer& renderer) {
-  auto epub = std::make_shared<Epub>(filePath, "/.crosspoint");
+  auto epub = std::make_shared<Epub>(filePath, PROFILE_STORE.getProfileCacheBase());
   // Load CSS when embeddedStyle is enabled, as createSectionFile may need it to rebuild the cache.
   if (!epub->load(true, SETTINGS.embeddedStyle == 0)) {
     LOG_DBG("SLP", "EPUB: failed to load %s", filePath.c_str());

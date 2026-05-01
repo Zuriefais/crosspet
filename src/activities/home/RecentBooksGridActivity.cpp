@@ -18,6 +18,7 @@
 #include "CrossPointSettings.h"
 #include "FileBrowserActionActivity.h"
 #include "MappedInputManager.h"
+#include "ProfileStore.h"
 #include "RecentBookProgress.h"
 #include "RecentBooksStore.h"
 #include "activities/util/ConfirmationActivity.h"
@@ -198,10 +199,10 @@ void calculateCoverFillCrop(const Bitmap& bitmap, float& cropX, float& cropY) {
 
 std::string getReusableCoverPath(const RecentBook& book) {
   if (FsHelpers::hasEpubExtension(book.path)) {
-    return Epub(book.path, "/.crosspoint").getThumbBmpPath();
+    return Epub(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   if (FsHelpers::hasXtcExtension(book.path)) {
-    return Xtc(book.path, "/.crosspoint").getThumbBmpPath();
+    return Xtc(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   return book.coverBmpPath;
 }
@@ -276,7 +277,7 @@ void RecentBooksGridActivity::loadPageCovers(int pageStart) {
         book.coverBmpPath.empty() ? "" : UITheme::getCoverThumbPath(book.coverBmpPath, COVER_WIDTH, COVER_HEIGHT);
     if (needsCoverThumbGeneration(book, coverPath)) {
       if (FsHelpers::hasEpubExtension(book.path)) {
-        Epub epub(book.path, "/.crosspoint");
+        Epub epub(book.path, PROFILE_STORE.getProfileCacheBase());
         if (epub.load(false, true)) {
           if (!showingLoading) {
             showingLoading = true;
@@ -293,7 +294,7 @@ void RecentBooksGridActivity::loadPageCovers(int pageStart) {
           }
         }
       } else if (FsHelpers::hasXtcExtension(book.path)) {
-        Xtc xtc(book.path, "/.crosspoint");
+        Xtc xtc(book.path, PROFILE_STORE.getProfileCacheBase());
         if (xtc.load()) {
           if (!showingLoading) {
             showingLoading = true;

@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <limits>
 
+#include "ProfileStore.h"
+
 namespace {
 constexpr uint8_t LEGACY_VERSION = 2;
 constexpr uint8_t COUNT_U16_VERSION = 3;
@@ -16,7 +18,6 @@ constexpr uint8_t VERSION = 5;
 // Stored count is uint16_t in v3+, but we keep an in-memory safety cap for ESP32-C3 RAM.
 constexpr uint16_t MAX_BOOKMARKS = 1024;
 constexpr size_t INITIAL_BOOKMARK_RESERVE = 8;
-constexpr char BOOKMARKS_DIR[] = "/.crosspoint/bookmarks";
 
 bool readBookmarkCount(FsFile& file, const uint8_t version, uint16_t& count) {
   if (version == LEGACY_VERSION) {
@@ -54,7 +55,7 @@ bool BookmarkStore::loadForBook(const std::string& filePath, const std::string& 
   }
 
   const uint32_t crc = uzlib_crc32(filePath.data(), static_cast<unsigned int>(filePath.size()), 0);
-  storeFilePath = std::string(BOOKMARKS_DIR) + "/" + bookType + "_" + std::to_string(crc) + ".bin";
+  storeFilePath = PROFILE_STORE.getProfileBookmarksDir() + "/" + bookType + "_" + std::to_string(crc) + ".bin";
 
   if (!Storage.exists(storeFilePath.c_str())) {
     LOG_DBG("BKS", "No bookmark file for this book");
@@ -266,7 +267,8 @@ bool BookmarkStore::readFromFile() {
 }
 
 bool BookmarkStore::writeToFile() const {
-  Storage.mkdir(BOOKMARKS_DIR);
+  const std::string bookmarksDir = PROFILE_STORE.getProfileBookmarksDir();
+  Storage.mkdir(bookmarksDir.c_str());
 
   FsFile f;
   if (!Storage.openFileForWrite("BKS", storeFilePath, f)) {
@@ -297,7 +299,7 @@ bool BookmarkStore::writeToFile() const {
 
 void BookmarkStore::deleteForFilePath(const std::string& filePath, const std::string& bookType) {
   const uint32_t crc = uzlib_crc32(filePath.data(), static_cast<unsigned int>(filePath.size()), 0);
-  const std::string path = std::string(BOOKMARKS_DIR) + "/" + bookType + "_" + std::to_string(crc) + ".bin";
+  const std::string path = PROFILE_STORE.getProfileBookmarksDir() + "/" + bookType + "_" + std::to_string(crc) + ".bin";
   if (!Storage.exists(path.c_str())) return;
   if (!Storage.remove(path.c_str())) {
     LOG_ERR("BKS", "Failed to delete bookmark file: %s", path.c_str());
@@ -307,16 +309,18 @@ void BookmarkStore::deleteForFilePath(const std::string& filePath, const std::st
 }
 
 bool BookmarkStore::hasAnyBookmarks() {
-  if (!Storage.exists(BOOKMARKS_DIR)) return false;
-  return !Storage.listFiles(BOOKMARKS_DIR).empty();
+  const std::string bookmarksDir = PROFILE_STORE.getProfileBookmarksDir();
+  if (!Storage.exists(bookmarksDir.c_str())) return false;
+  return !Storage.listFiles(bookmarksDir.c_str()).empty();
 }
 
 bool BookmarkStore::getAllBookmarkedBooks(std::vector<BookmarkedBookEntry>& out) {
-  if (!Storage.exists(BOOKMARKS_DIR)) return true;
+  const std::string bookmarksDir = PROFILE_STORE.getProfileBookmarksDir();
+  if (!Storage.exists(bookmarksDir.c_str())) return true;
 
-  const auto files = Storage.listFiles(BOOKMARKS_DIR);
+  const auto files = Storage.listFiles(bookmarksDir.c_str());
   for (const auto& name : files) {
-    const std::string fullPath = std::string(BOOKMARKS_DIR) + "/" + name.c_str();
+    const std::string fullPath = bookmarksDir + "/" + name.c_str();
 
     FsFile f;
     if (!Storage.openFileForRead("BKS", fullPath, f)) continue;

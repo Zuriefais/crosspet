@@ -69,6 +69,7 @@ inline esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause() { return ESP_SLEEP_
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
+#include "ProfileStore.h"
 #include "RecentBooksStore.h"
 #include "SdCardFontSystem.h"
 #include "activities/Activity.h"
@@ -456,7 +457,7 @@ bool startGlobalSyncProgress() {
     return true;
   }
 
-  auto epub = std::make_shared<Epub>(epubPath, "/.crosspoint");
+  auto epub = std::make_shared<Epub>(epubPath, PROFILE_STORE.getProfileCacheBase());
   if (!epub->load(true, SETTINGS.embeddedStyle == 0)) {
     LOG_ERR("MAIN", "Failed to load EPUB for global sync: %s", epubPath.c_str());
     activityManager.pushActivity(std::make_unique<KOReaderSettingsActivity>(renderer, mappedInputManager));
@@ -789,6 +790,8 @@ void setup() {
 
   HalSystem::checkPanic();
 
+  PROFILE_STORE.loadFromFile();
+  PROFILE_STORE.ensureDefaultProfile();
   SETTINGS.loadFromFile();
   APP_STATE.loadFromFile();
   RECENT_BOOKS.loadFromFile();

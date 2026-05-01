@@ -13,6 +13,7 @@
 #include "BookmarkStore.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "ProfileStore.h"
 #include "RecentBooksStore.h"
 #include "activities/reader/BookReadingStats.h"
 #include "activities/reader/GlobalReadingStats.h"
@@ -70,7 +71,7 @@ bool hasClearableBookCache(const std::string& path) {
 
 void clearFileMetadata(const std::string& fullPath) {
   if (FsHelpers::hasEpubExtension(fullPath)) {
-    Epub(fullPath, "/.crosspoint").clearCache();
+    Epub(fullPath, PROFILE_STORE.getProfileCacheBase()).clearCache();
     BookmarkStore::deleteForFilePath(fullPath, "epub");
   } else if (FsHelpers::hasXtcExtension(fullPath)) {
     BookmarkStore::deleteForFilePath(fullPath, "xtc");
@@ -82,16 +83,16 @@ void clearFileMetadata(const std::string& fullPath) {
 
 bool clearBookCache(const std::string& fullPath) {
   if (FsHelpers::hasEpubExtension(fullPath)) {
-    return Epub(fullPath, "/.crosspoint").clearCache();
+    return Epub(fullPath, PROFILE_STORE.getProfileCacheBase()).clearCache();
   }
   if (FsHelpers::hasXtcExtension(fullPath)) {
-    return Xtc(fullPath, "/.crosspoint").clearCache();
+    return Xtc(fullPath, PROFILE_STORE.getProfileCacheBase()).clearCache();
   }
   return false;
 }
 
 bool isEpubCompleted(const std::string& fullPath) {
-  const Epub epub(fullPath, "/.crosspoint");
+  const Epub epub(fullPath, PROFILE_STORE.getProfileCacheBase());
   return BookReadingStats::load(epub.getCachePath()).isCompleted;
 }
 
@@ -100,7 +101,7 @@ bool toggleEpubCompleted(const std::string& fullPath, const std::string& display
     return false;
   }
 
-  Epub epub(fullPath, "/.crosspoint");
+  Epub epub(fullPath, PROFILE_STORE.getProfileCacheBase());
   epub.setupCacheDir();
 
   BookReadingStats stats = BookReadingStats::load(epub.getCachePath());
@@ -132,7 +133,7 @@ bool toggleEpubCompleted(const std::string& fullPath, const std::string& display
       return true;
     }
 
-    const std::string newCachePath = Epub::cachePathForFilePath(dstPath, "/.crosspoint");
+    const std::string newCachePath = Epub::cachePathForFilePath(dstPath, PROFILE_STORE.getProfileCacheBase());
     if (!oldCachePath.empty() && Storage.exists(oldCachePath.c_str())) {
       if (!Storage.rename(oldCachePath.c_str(), newCachePath.c_str())) {
         LOG_ERR("BookActions", "Failed to rename cache dir %s -> %s (non-fatal)", oldCachePath.c_str(),

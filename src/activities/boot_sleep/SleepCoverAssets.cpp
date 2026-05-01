@@ -9,6 +9,7 @@
 #include <cstdint>
 
 #include "CrossPointSettings.h"
+#include "ProfileStore.h"
 #include "components/UITheme.h"
 #include "components/themes/minimal/MinimalTheme.h"
 
@@ -66,13 +67,13 @@ bool prepareTxt(const Txt& txt) {
 
 std::string reusableCoverPathFor(const std::string& bookPath) {
   if (FsHelpers::hasEpubExtension(bookPath)) {
-    return Epub(bookPath, "/.crosspoint").getThumbBmpPath();
+    return Epub(bookPath, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   if (FsHelpers::hasXtcExtension(bookPath)) {
-    return Xtc(bookPath, "/.crosspoint").getThumbBmpPath();
+    return Xtc(bookPath, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   if (FsHelpers::hasTxtExtension(bookPath) || FsHelpers::hasMarkdownExtension(bookPath)) {
-    return Txt(bookPath, "/.crosspoint").getCoverBmpPath();
+    return Txt(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath();
   }
   return {};
 }
@@ -80,11 +81,11 @@ std::string reusableCoverPathFor(const std::string& bookPath) {
 std::string cachedCoverPathFor(const std::string& bookPath, const bool cropped) {
   std::string coverPath;
   if (FsHelpers::hasEpubExtension(bookPath)) {
-    coverPath = Epub(bookPath, "/.crosspoint").getCoverBmpPath(cropped);
+    coverPath = Epub(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath(cropped);
   } else if (FsHelpers::hasXtcExtension(bookPath)) {
-    coverPath = Xtc(bookPath, "/.crosspoint").getCoverBmpPath();
+    coverPath = Xtc(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath();
   } else if (FsHelpers::hasTxtExtension(bookPath) || FsHelpers::hasMarkdownExtension(bookPath)) {
-    coverPath = Txt(bookPath, "/.crosspoint").getCoverBmpPath();
+    coverPath = Txt(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath();
   }
 
   return fileExists(coverPath) ? coverPath : std::string{};
@@ -92,7 +93,7 @@ std::string cachedCoverPathFor(const std::string& bookPath, const bool cropped) 
 
 std::string cachedMinimalCoverPathFor(const std::string& bookPath) {
   if (FsHelpers::hasEpubExtension(bookPath)) {
-    const Epub epub(bookPath, "/.crosspoint");
+    const Epub epub(bookPath, PROFILE_STORE.getProfileCacheBase());
     const std::string coverPath = epub.getAdaptiveThumbBmpPath(kMinimalSleepCoverWidth, kMinimalSleepCoverHeight);
     return fileExists(coverPath) ? epub.getThumbBmpPath() : std::string{};
   }
