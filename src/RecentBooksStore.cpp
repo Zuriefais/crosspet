@@ -1,6 +1,7 @@
 #include "RecentBooksStore.h"
 
 #include <Epub.h>
+#include <Fb2.h>
 #include <FsHelpers.h>
 #include <HalStorage.h>
 #include <JsonSettingsIO.h>
@@ -148,6 +149,12 @@ RecentBook RecentBooksStore::getDataFromBook(std::string path) const {
     }
   } else if (FsHelpers::hasTxtExtension(lastBookFileName) || FsHelpers::hasMarkdownExtension(lastBookFileName)) {
     return RecentBook{path, lastBookFileName, "", ""};
+  } else if (FsHelpers::hasFb2Extension(lastBookFileName)) {
+    Fb2 fb2(path, PROFILE_STORE.getProfileCacheBase());
+    if (fb2.loadMetadataOnly()) {
+      const std::string coverBmpPath = Storage.exists(fb2.getCoverBmpPath().c_str()) ? fb2.getCoverBmpPath() : "";
+      return RecentBook{path, fb2.getTitle(), fb2.getAuthor(), coverBmpPath};
+    }
   }
   return RecentBook{path, "", "", ""};
 }

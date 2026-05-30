@@ -60,6 +60,12 @@ bool hasMarkdownExtension(std::string_view fileName);
 
 // Check for .css extension (case-insensitive)
 bool hasCssExtension(std::string_view fileName);
+
+// Check for .fb2 extension (case-insensitive)
+bool hasFb2Extension(std::string_view fileName);
+inline bool hasFb2Extension(const String& fileName) {
+  return hasFb2Extension(std::string_view{fileName.c_str(), fileName.length()});
+}
 inline bool hasCssExtension(const String& fileName) {
   return hasCssExtension(std::string_view{fileName.c_str(), fileName.length()});
 }

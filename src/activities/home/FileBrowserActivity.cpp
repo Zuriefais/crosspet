@@ -30,7 +30,7 @@ bool isSleepImageFile(const std::string& path) {
 
 bool hasFileMetadata(const std::string& path) {
   return FsHelpers::hasEpubExtension(path) || FsHelpers::hasXtcExtension(path) || FsHelpers::hasTxtExtension(path) ||
-         FsHelpers::hasMarkdownExtension(path);
+         FsHelpers::hasMarkdownExtension(path) || FsHelpers::hasFb2Extension(path);
 }
 
 std::string buildFullPath(std::string basepath, const std::string& entry) {
@@ -113,7 +113,8 @@ void FileBrowserActivity::loadFiles() {
         }
       } else if (FsHelpers::hasEpubExtension(filename) || FsHelpers::hasXtcExtension(filename) ||
                  FsHelpers::hasTxtExtension(filename) || FsHelpers::hasMarkdownExtension(filename) ||
-                 FsHelpers::hasBmpExtension(filename) || FsHelpers::hasPngExtension(filename)) {
+                 FsHelpers::hasFb2Extension(filename) || FsHelpers::hasBmpExtension(filename) ||
+                 FsHelpers::hasPngExtension(filename)) {
         files.emplace_back(filename);
       }
     }

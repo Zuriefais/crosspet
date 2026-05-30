@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Bitmap.h>
 #include <Epub.h>
+#include <Fb2.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
@@ -204,6 +205,9 @@ std::string getReusableCoverPath(const RecentBook& book) {
   if (FsHelpers::hasXtcExtension(book.path)) {
     return Xtc(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
+  if (FsHelpers::hasFb2Extension(book.path)) {
+    return Fb2(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
+  }
   return book.coverBmpPath;
 }
 
@@ -303,6 +307,23 @@ void RecentBooksGridActivity::loadPageCovers(int pageStart) {
           GUI.fillPopupProgress(renderer, popupRect, 10 + (processedCount * 90) / totalToProcess);
           if (xtc.generateThumbBmp(COVER_WIDTH, COVER_HEIGHT)) {
             const std::string reusablePath = xtc.getThumbBmpPath();
+            book.coverBmpPath = reusablePath;
+            updateRecentBookCoverPath(book, reusablePath);
+          } else {
+            updateRecentBookCoverPath(book, "");
+            book.coverBmpPath = "";
+          }
+        }
+      } else if (FsHelpers::hasFb2Extension(book.path)) {
+        Fb2 fb2(book.path, PROFILE_STORE.getProfileCacheBase());
+        if (fb2.loadMetadataOnly()) {
+          if (!showingLoading) {
+            showingLoading = true;
+            popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+          }
+          GUI.fillPopupProgress(renderer, popupRect, 10 + (processedCount * 90) / totalToProcess);
+          if (fb2.generateCoverBmp()) {
+            const std::string reusablePath = fb2.getThumbBmpPath();
             book.coverBmpPath = reusablePath;
             updateRecentBookCoverPath(book, reusablePath);
           } else {

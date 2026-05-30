@@ -1,6 +1,7 @@
 #include "RecentBookProgress.h"
 
 #include <Epub.h>
+#include <Fb2.h>
 #include <FsHelpers.h>
 #include <HalStorage.h>
 #include <Serialization.h>
@@ -122,6 +123,40 @@ float loadTxtProgressPercent(const RecentBook& book) {
 
   return clampProgressPercent((static_cast<float>(currentPage + 1) / static_cast<float>(totalPages)) * 100.0f);
 }
+float loadFb2ProgressPercent(const RecentBook& book) {
+  Fb2 fb2(book.path, PROFILE_STORE.getProfileCacheBase());
+  if (!fb2.loadMetadataOnly()) {
+    return -1.0f;
+  }
+
+  FsFile progressFile;
+  if (!Storage.openFileForRead("RBPR", fb2.getCachePath() + "/progress.bin", progressFile)) {
+    return -1.0f;
+  }
+
+  uint32_t magic;
+  uint8_t version;
+  uint16_t currentSection, currentPageInSection;
+  const bool readOk = serialization::tryReadPod(progressFile, magic) &&
+                      serialization::tryReadPod(progressFile, version) &&
+                      serialization::tryReadPod(progressFile, currentSection) &&
+                      serialization::tryReadPod(progressFile, currentPageInSection);
+  progressFile.close();
+
+  if (!readOk || magic != 0x46423250) {
+    return -1.0f;
+  }
+  (void)version;
+  (void)currentPageInSection;
+
+  const uint16_t sectionCount = fb2.getSectionCount();
+  if (sectionCount == 0) {
+    return 0.0f;
+  }
+
+  return clampProgressPercent((static_cast<float>(currentSection) / static_cast<float>(sectionCount)) * 100.0f);
+}
+
 }  // namespace
 
 float RecentBookProgress::loadPercent(const RecentBook& book) {
@@ -133,6 +168,9 @@ float RecentBookProgress::loadPercent(const RecentBook& book) {
   }
   if (FsHelpers::hasTxtExtension(book.path) || FsHelpers::hasMarkdownExtension(book.path)) {
     return loadTxtProgressPercent(book);
+  }
+  if (FsHelpers::hasFb2Extension(book.path)) {
+    return loadFb2ProgressPercent(book);
   }
   return -1.0f;
 }

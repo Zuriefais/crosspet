@@ -1,6 +1,7 @@
 #include "BookActions.h"
 
 #include <Epub.h>
+#include <Fb2.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
@@ -66,7 +67,7 @@ std::vector<FileBrowserActionActivity::MenuItem> buildBookActionItems(const std:
 }
 
 bool hasClearableBookCache(const std::string& path) {
-  return FsHelpers::hasEpubExtension(path) || FsHelpers::hasXtcExtension(path);
+  return FsHelpers::hasEpubExtension(path) || FsHelpers::hasXtcExtension(path) || FsHelpers::hasFb2Extension(path);
 }
 
 void clearFileMetadata(const std::string& fullPath) {
@@ -77,6 +78,9 @@ void clearFileMetadata(const std::string& fullPath) {
     BookmarkStore::deleteForFilePath(fullPath, "xtc");
   } else if (FsHelpers::hasTxtExtension(fullPath) || FsHelpers::hasMarkdownExtension(fullPath)) {
     BookmarkStore::deleteForFilePath(fullPath, "txt");
+  } else if (FsHelpers::hasFb2Extension(fullPath)) {
+    Fb2(fullPath, PROFILE_STORE.getProfileCacheBase()).clearCache();
+    BookmarkStore::deleteForFilePath(fullPath, "fb2");
   }
   LOG_DBG("BookActions", "Cleared metadata for: %s", fullPath.c_str());
 }
@@ -87,6 +91,9 @@ bool clearBookCache(const std::string& fullPath) {
   }
   if (FsHelpers::hasXtcExtension(fullPath)) {
     return Xtc(fullPath, PROFILE_STORE.getProfileCacheBase()).clearCache();
+  }
+  if (FsHelpers::hasFb2Extension(fullPath)) {
+    return Fb2(fullPath, PROFILE_STORE.getProfileCacheBase()).clearCache();
   }
   return false;
 }

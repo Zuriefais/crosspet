@@ -11,7 +11,7 @@ struct RecentBook;
 //   const float progress = RecentBookProgress::loadPercent(book);
 //   const std::string label = RecentBookProgress::formatPercent(progress);
 namespace RecentBookProgress {
-// Loads the saved reading percentage for a recent EPUB, XTC, TXT, or Markdown book.
+// Loads the saved reading percentage for a recent EPUB, XTC, TXT, Markdown, or FB2 book.
 // Returns -1.0f when progress is unavailable or the cache cannot be read.
 float loadPercent(const RecentBook& book);
 // Returns true when progress contains a known 0-100 percentage.

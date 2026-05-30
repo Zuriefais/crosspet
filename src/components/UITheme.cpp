@@ -203,6 +203,9 @@ UIIcon UITheme::getFileIcon(const std::string& filename) {
   if (FsHelpers::hasTxtExtension(filename) || FsHelpers::hasMarkdownExtension(filename)) {
     return Text;
   }
+  if (FsHelpers::hasFb2Extension(filename)) {
+    return Book;
+  }
   if (FsHelpers::hasBmpExtension(filename)) {
     return Image;
   }

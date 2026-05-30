@@ -2,6 +2,7 @@
 
 #include <Bitmap.h>
 #include <Epub.h>
+#include <Fb2.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
@@ -129,6 +130,9 @@ std::string getRecentBookCachePath(const RecentBook& book) {
   if (FsHelpers::hasTxtExtension(book.path) || FsHelpers::hasMarkdownExtension(book.path)) {
     return PROFILE_STORE.getProfileCacheBase() + "/txt_" + std::to_string(std::hash<std::string>{}(book.path));
   }
+  if (FsHelpers::hasFb2Extension(book.path)) {
+    return Fb2(book.path, PROFILE_STORE.getProfileCacheBase()).getCachePath();
+  }
   return "";
 }
 
@@ -157,6 +161,9 @@ std::string getReusableCoverPath(const RecentBook& book) {
   }
   if (FsHelpers::hasXtcExtension(book.path)) {
     return Xtc(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
+  }
+  if (FsHelpers::hasFb2Extension(book.path)) {
+    return Fb2(book.path, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   return book.coverBmpPath;
 }
@@ -589,6 +596,28 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
               coverRendered = false;
               requestUpdate();
             }
+          } else if (FsHelpers::hasFb2Extension(book.path)) {
+            Fb2 fb2(book.path, PROFILE_STORE.getProfileCacheBase());
+            if (fb2.loadMetadataOnly()) {
+              if (!showingLoading) {
+                showingLoading = true;
+                popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+              }
+              GUI.fillPopupProgress(renderer, popupRect, 10 + progress * progressIncrement);
+              bool success = true;
+              if (centerMissing)
+                success = fb2.generateCoverBmp() && success;
+              if (sideMissing)
+                success = fb2.generateThumbBmp() && success;
+              if (!success) {
+                updateRecentBookCoverPath(book, "");
+                book.coverBmpPath = "";
+              } else {
+                bookUpdated[bookIdx] = true;
+              }
+              coverRendered = false;
+              requestUpdate();
+            }
           }
         }
       } else {
@@ -637,6 +666,24 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
                   useMinimalThumb ? xtc.generateThumbBmp(static_cast<uint16_t>(minimalHomeCoverWidth(coverHeight)),
                                                          static_cast<uint16_t>(minimalHomeCoverHeight(coverHeight)))
                                   : xtc.generateThumbBmp(coverHeight);
+              if (!success) {
+                updateRecentBookCoverPath(book, "");
+                book.coverBmpPath = "";
+              } else {
+                bookUpdated[bookIdx] = true;
+              }
+              coverRendered = false;
+              requestUpdate();
+            }
+          } else if (FsHelpers::hasFb2Extension(book.path)) {
+            Fb2 fb2(book.path, PROFILE_STORE.getProfileCacheBase());
+            if (!showingLoading) {
+              showingLoading = true;
+              popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+            }
+            GUI.fillPopupProgress(renderer, popupRect, 10 + progress * progressIncrement);
+            if (fb2.loadMetadataOnly()) {
+              const bool success = fb2.generateCoverBmp();
               if (!success) {
                 updateRecentBookCoverPath(book, "");
                 book.coverBmpPath = "";
@@ -1643,6 +1690,10 @@ void HomeActivity::onProfileSelectOpen() {
                            showAllDevicesStats = GlobalReadingStats::hasSyncedStats();
                            allDevicesGlobalStats =
                                showAllDevicesStats ? GlobalReadingStats::loadAggregated(globalStats) : globalStats;
+                           gCarouselCache.invalidate();
+                           carouselFramesReady = false;
+                           recentsLoaded = false;
+                           recentsLoading = false;
                            updateHighlightedBookContext();
                            requestUpdate();
                          });

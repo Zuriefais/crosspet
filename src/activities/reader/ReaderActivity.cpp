@@ -7,6 +7,8 @@
 #include "CrossPointSettings.h"
 #include "Epub.h"
 #include "EpubReaderActivity.h"
+#include "Fb2.h"
+#include "Fb2ReaderActivity.h"
 #include "SdCardFontSystem.h"
 #include "Txt.h"
 #include "TxtReaderActivity.h"
@@ -23,6 +25,8 @@ bool ReaderActivity::isTxtFile(const std::string& path) {
   return FsHelpers::hasTxtExtension(path) ||
          FsHelpers::hasMarkdownExtension(path);  // Treat .md as txt files (until we have a markdown reader)
 }
+
+bool ReaderActivity::isFb2File(const std::string& path) { return FsHelpers::hasFb2Extension(path); }
 
 bool ReaderActivity::isBmpFile(const std::string& path) { return FsHelpers::hasBmpExtension(path); }
 
@@ -71,6 +75,21 @@ std::unique_ptr<Txt> ReaderActivity::loadTxt(const std::string& path) {
   return nullptr;
 }
 
+std::unique_ptr<Fb2> ReaderActivity::loadFb2(const std::string& path) {
+  if (!Storage.exists(path.c_str())) {
+    LOG_ERR("READER", "File does not exist: %s", path.c_str());
+    return nullptr;
+  }
+
+  auto fb2 = std::unique_ptr<Fb2>(new Fb2(path, PROFILE_STORE.getProfileCacheBase()));
+  if (fb2->load()) {
+    return fb2;
+  }
+
+  LOG_ERR("READER", "Failed to load FB2");
+  return nullptr;
+}
+
 void ReaderActivity::goToLibrary(const std::string& fromBookPath) {
   // If coming from a book, start in that book's folder; otherwise start from root
   auto initialPath = fromBookPath.empty() ? "/" : FsHelpers::extractFolderPath(fromBookPath);
@@ -81,6 +100,12 @@ void ReaderActivity::onGoToEpubReader(std::unique_ptr<Epub> epub) {
   const auto epubPath = epub->getPath();
   currentBookPath = epubPath;
   activityManager.replaceActivity(std::make_unique<EpubReaderActivity>(renderer, mappedInput, std::move(epub)));
+}
+
+void ReaderActivity::onGoToFb2Reader(std::unique_ptr<Fb2> fb2) {
+  const auto fb2Path = fb2->getPath();
+  currentBookPath = fb2Path;
+  activityManager.replaceActivity(std::make_unique<Fb2ReaderActivity>(renderer, mappedInput, std::move(fb2)));
 }
 
 void ReaderActivity::onGoToBmpViewer(const std::string& path) {
@@ -125,6 +150,13 @@ void ReaderActivity::onEnter() {
       return;
     }
     onGoToXtcReader(std::move(xtc));
+  } else if (isFb2File(initialBookPath)) {
+    auto fb2 = loadFb2(initialBookPath);
+    if (!fb2) {
+      onGoBack();
+      return;
+    }
+    onGoToFb2Reader(std::move(fb2));
   } else if (isTxtFile(initialBookPath)) {
     auto txt = loadTxt(initialBookPath);
     if (!txt) {

@@ -3,6 +3,7 @@
 ## [v1.3.1] - 2026-05-28
 
 ### Added
+- Added FictionBook (FB2) format support with file browsing, metadata extraction, cover generation, progress tracking, and cache management.
 - Added reader display and navigation options for line height, publisher page numbers, superscript/subscript text, tilt direction, and side-button page turns.
 - Added EPUB reading-position improvements, including bookmark anchors, bookmark preview snippets, and optional chapter/book time-left estimates.
 - Added nearby Reading Stats sync with separate totals for this device and all synced CrossInk readers.
@@ -22,6 +23,7 @@
 - Fixed web uploads and KOReader Sync progress saves so refreshed book files keep their progress, stats, settings, and valid resume data.
 - Fixed OPDS low-memory handling so parser-buffer failures show a specific memory message and SD-card fonts release memory before catalog loading.
 - Fixed EPUB cache, CSS, table, SD-card font, and allocation failure paths so low-memory chapters recover, retry, or stop cleanly instead of opening unstyled pages, failing unnecessarily, or risking a reboot.
+- Fixed the Lyra Carousel theme not refreshing the book list and covers after changing profiles via the home menu.
 - Fixed EPUB text with invisible word-joiner characters so missing font glyphs no longer show replacement diamonds.
 - Clarified the low-memory EPUB image warning so it says some or all images may be missing.
 

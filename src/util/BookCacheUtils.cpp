@@ -1,6 +1,7 @@
 #include "BookCacheUtils.h"
 
 #include <Epub.h>
+#include <Fb2.h>
 #include <FsHelpers.h>
 #include <Logging.h>
 #include <Txt.h>
@@ -39,6 +40,9 @@ std::string getBookCachePath(const std::string& path) {
   if (FsHelpers::hasTxtExtension(path)) {
     return Txt(path, PROFILE_STORE.getProfileCacheBase()).getCachePath();
   }
+  if (FsHelpers::hasFb2Extension(path)) {
+    return Fb2(path, PROFILE_STORE.getProfileCacheBase()).getCachePath();
+  }
   return "";
 }
 
@@ -47,7 +51,7 @@ const PreservedCacheFile* preservedFilesForPath(const std::string& path, size_t&
     count = std::size(EPUB_USER_STATE_FILES);
     return EPUB_USER_STATE_FILES;
   }
-  if (FsHelpers::hasXtcExtension(path) || FsHelpers::hasTxtExtension(path)) {
+  if (FsHelpers::hasXtcExtension(path) || FsHelpers::hasTxtExtension(path) || FsHelpers::hasFb2Extension(path)) {
     count = std::size(PAGE_PROGRESS_FILES);
     return PAGE_PROGRESS_FILES;
   }
@@ -119,10 +123,12 @@ bool isBookCacheDirectoryName(const char* name) {
   constexpr char EPUB_PREFIX[] = "epub_";
   constexpr char TXT_PREFIX[] = "txt_";
   constexpr char XTC_PREFIX[] = "xtc_";
+  constexpr char FB2_PREFIX[] = "fb2_";
 
   return strncmp(name, EPUB_PREFIX, std::size(EPUB_PREFIX) - 1) == 0 ||
          strncmp(name, TXT_PREFIX, std::size(TXT_PREFIX) - 1) == 0 ||
-         strncmp(name, XTC_PREFIX, std::size(XTC_PREFIX) - 1) == 0;
+         strncmp(name, XTC_PREFIX, std::size(XTC_PREFIX) - 1) == 0 ||
+         strncmp(name, FB2_PREFIX, std::size(FB2_PREFIX) - 1) == 0;
 }
 
 void clearBookCache(const std::string& path) {
@@ -132,6 +138,8 @@ void clearBookCache(const std::string& path) {
     Xtc(path, PROFILE_STORE.getProfileCacheBase()).clearCache();
   } else if (FsHelpers::hasTxtExtension(path)) {
     Txt(path, PROFILE_STORE.getProfileCacheBase()).clearCache();
+  } else if (FsHelpers::hasFb2Extension(path)) {
+    Fb2(path, PROFILE_STORE.getProfileCacheBase()).clearCache();
   } else {
     return;
   }

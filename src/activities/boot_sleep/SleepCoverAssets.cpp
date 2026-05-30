@@ -1,6 +1,7 @@
 #include "SleepCoverAssets.h"
 
 #include <Epub.h>
+#include <Fb2.h>
 #include <FsHelpers.h>
 #include <HalStorage.h>
 #include <Txt.h>
@@ -65,6 +66,17 @@ bool prepareTxt(const Txt& txt) {
   return txt.generateCoverBmp();
 }
 
+bool prepareFb2(const Fb2& fb2) {
+  bool success = true;
+  if (shouldPrepareFullCover()) {
+    success = fb2.generateCoverBmp() && success;
+  }
+  if (shouldPrepareMinimalCover()) {
+    success = fb2.generateThumbBmp() && success;
+  }
+  return success;
+}
+
 std::string reusableCoverPathFor(const std::string& bookPath) {
   if (FsHelpers::hasEpubExtension(bookPath)) {
     return Epub(bookPath, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
@@ -74,6 +86,9 @@ std::string reusableCoverPathFor(const std::string& bookPath) {
   }
   if (FsHelpers::hasTxtExtension(bookPath) || FsHelpers::hasMarkdownExtension(bookPath)) {
     return Txt(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath();
+  }
+  if (FsHelpers::hasFb2Extension(bookPath)) {
+    return Fb2(bookPath, PROFILE_STORE.getProfileCacheBase()).getThumbBmpPath();
   }
   return {};
 }
@@ -86,6 +101,8 @@ std::string cachedCoverPathFor(const std::string& bookPath, const bool cropped) 
     coverPath = Xtc(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath();
   } else if (FsHelpers::hasTxtExtension(bookPath) || FsHelpers::hasMarkdownExtension(bookPath)) {
     coverPath = Txt(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath();
+  } else if (FsHelpers::hasFb2Extension(bookPath)) {
+    coverPath = Fb2(bookPath, PROFILE_STORE.getProfileCacheBase()).getCoverBmpPath();
   }
 
   return fileExists(coverPath) ? coverPath : std::string{};
