@@ -10,7 +10,7 @@
 #define TAG "FB2_PARSE"
 
 namespace {
-constexpr size_t READ_CHUNK_SIZE = 4096;
+constexpr size_t READ_CHUNK_SIZE = 2048;
 
 bool isWhitespace(char c) { return c == ' ' || c == '\r' || c == '\n' || c == '\t'; }
 

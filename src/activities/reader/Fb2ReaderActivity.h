@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "activities/Activity.h"
+#include "CrossPointSettings.h"
 
 class Fb2ReaderActivity final : public Activity {
   std::unique_ptr<Fb2> fb2;
@@ -17,6 +18,8 @@ class Fb2ReaderActivity final : public Activity {
   int pagesUntilFullRefresh = 0;
   bool sideButtonLongPressHandled = false;
   bool frontButtonLongPressHandled = false;
+  bool longPressMenuHandled = false;
+  bool longPowerButtonHandled = false;
 
   // Cached pages for current section
   int currentSectionCached = -1;
@@ -27,7 +30,7 @@ class Fb2ReaderActivity final : public Activity {
   bool initialized = false;
 
   int fontId = 0;
-  uint8_t cachedFontId = 0;
+  int cachedFontId = 0;
   float lineCompression = 1.0f;
   bool extraParagraphSpacing = false;
   bool forceParagraphIndents = false;
@@ -45,8 +48,18 @@ class Fb2ReaderActivity final : public Activity {
 
   void initializeReader();
   void buildSectionPages(int sectionIndex);
+  void loadPageFromCache(int pageIndex);
   void saveProgress() const;
   void loadProgress();
+
+  void reindexCurrentSection();
+  void applyOrientation(uint8_t orientation);
+  void executeReaderQuickAction(CrossPointSettings::LONG_PRESS_MENU_ACTION action);
+  void executeLongPressMenuAction();
+  bool consumeLongPowerButtonRelease();
+  bool consumeLongPowerButtonHold();
+  bool executeShortPowerButtonAction();
+  bool executeLongPowerButtonAction();
 
  public:
   explicit Fb2ReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::unique_ptr<Fb2> fb2)
@@ -57,6 +70,7 @@ class Fb2ReaderActivity final : public Activity {
   void render(RenderLock&&) override;
   bool isReaderActivity() const override { return true; }
   bool canSnapshotForSleepOverlay() const override { return true; }
+  bool allowPowerAsConfirmInReaderMode() const override { return true; }
   std::string getCurrentBookPath() const override { return fb2 ? fb2->getPath() : std::string{}; }
   ScreenshotInfo getScreenshotInfo() const override;
 };

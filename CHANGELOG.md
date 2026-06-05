@@ -1,6 +1,6 @@
 # Changelog
 
-## [v1.3.1] - 2026-05-28
+## [v1.3.2] - 2026-05-30
 
 ### Added
 - Added FictionBook (FB2) format support with file browsing, metadata extraction, cover generation, progress tracking, and cache management.
@@ -18,7 +18,16 @@
 - Delayed the automatic finished-book prompt until the reader leaves the chapter where they reach 99%.
 
 ### Fixed
+- Fixed FB2 reader crash on large books by caching serialized pages to SD instead of keeping all pages in memory (resolves heap exhaustion during section parsing).
+- Fixed FB2 reader book title/author in recent books — now uses metadata from the FB2 file instead of filename.
+- Fixed FB2 reader missing cover image — cover is rendered as the first page.
+- Fixed FB2 reader missing loading popup during section rebuild.
 - Fixed the WiFi settings screen so the displayed MAC address stays consistent and matches the router-visible WiFi address.
+
+### Added
+- Added FB2 reader in-reader menu (Confirm button) with Reader Options, Section Selection, Orientation toggle, and Go Home, matching the EPUB reader interface.
+- Added FB2 reader section/chapter selection activity for navigating between book sections.
+- Added FB2 reader support for `renderImages()` so covers and other image content display correctly.
 - Fixed reader UI issues with inverted menu button hints, Lyra Carousel popups, and Auto Page Turn interval persistence.
 - Fixed web uploads and KOReader Sync progress saves so refreshed book files keep their progress, stats, settings, and valid resume data.
 - Fixed OPDS low-memory handling so parser-buffer failures show a specific memory message and SD-card fonts release memory before catalog loading.
